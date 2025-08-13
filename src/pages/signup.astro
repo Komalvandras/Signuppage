@@ -1,19 +1,19 @@
 ---
-import SignupForm from '../components/SignupForm.tsx';
-import '../styles/global.css';
+import "../styles/global.css";        // ensure Tailwind is loaded
+import SignupForm from "../components/SignupForm";
 ---
-
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Create your account - Join us with SolidJS and TailwindCSS" />
-    <title>Sign Up - Join Us Today</title>
+    <meta name="viewport" content="width=device-width" />
+    <title>Sign Up - LevelNine</title>
   </head>
   <body>
-    <div id="app">
-      <SignupForm client:load />
+    <div class="min-h-screen flex items-center justify-center p-6">
+      <div class="w-full max-w-md">
+        <!-- Hydrate the Solid component so loading state works -->
+        <SignupForm client:load />
+      </div>
     </div>
   </body>
 </html>

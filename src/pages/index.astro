@@ -1,19 +1,50 @@
+<!-- ---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import LoginForm from "../components/LoginForm";
 ---
-import LoginForm from '../components/LoginForm.tsx';
-import '../styles/global.css';
+<BaseLayout title="Login - LevelNine">
+  <div class="p-6">
+    <LoginForm client:load />
+  </div>
+</BaseLayout> -->
+
+
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import LoginForm from "../components/LoginForm";
+
+// ⬇ Load variables from .env (MONGODB_URI=...)
+import dotenv from "dotenv";
+dotenv.config();
+
+// ⬇ (Optional) small example: connect to MongoDB and read a value
+//    Delete this block if you don’t want DB access on the login page.
+import { MongoClient } from "mongodb";
+
+let usersCount: number | null = null;
+try {
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI is missing. Add it to your .env");
+  }
+
+  const client = new MongoClient(process.env.MONGODB_URI);
+  await client.connect();
+
+  const db = client.db("myappdb");
+  usersCount = await db.collection("users").countDocuments({});
+
+  await client.close();
+} catch (err) {
+  console.error("MongoDB check failed:", err);
+  usersCount = null;
+}
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Modern login page with SolidJS and TailwindCSS" />
-    <title>Login - Welcome Back</title>
-  </head>
-  <body>
-    <div id="app">
-      <LoginForm client:load />
-    </div>
-  </body>
-</html>
+<BaseLayout title="Login - LevelNine">
+  <div class="p-6">
+    <LoginForm client:load />
+    {usersCount !== null && (
+      <p class="mt-4 text-sm text-gray-500">Users in DB: {usersCount}</p>
+    )}
+  </div>
+</BaseLayout>

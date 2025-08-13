@@ -34,23 +34,35 @@ export default function LoginForm() {
   };
 
   const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setIsLoading(true);
-    
-    // Simulate API call
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Login attempt:', { email: email(), password: password() });
-      alert('Login successful! (This is just a demo)');
-    } catch (error) {
-      console.error('Login failed:', error);
-    } finally {
-      setIsLoading(false);
+  e.preventDefault();
+  if (!validateForm()) return;
+
+  setIsLoading(true);
+  try {
+    const params = new URLSearchParams({
+      email: email().trim(),
+      password: password(),
+    });
+
+    const res = await fetch(`/api/users?${params.toString()}`, { method: "GET" });
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      alert(data?.error || "Login failed");
+      return;
     }
-  };
+
+    console.log("Logged in:", data.user);
+    alert(`Welcome ${data.user?.name ?? ""}!`);
+    // TODO: set your client auth state/session here if needed
+  } catch (error) {
+    console.error("Login failed:", error);
+    alert("Something went wrong. Try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   // Clear errors when user starts typing
   createEffect(() => {
