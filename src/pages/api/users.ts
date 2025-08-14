@@ -1,14 +1,62 @@
 // src/pages/api/users.ts
 import type { APIRoute } from "astro";
-import { getDb } from "../../lib/db";
+import { MongoClient } from "mongodb";
 
-type NewUser = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+const uri = process.env.MONGODB_URI!;
+const dbName = process.env.MONGODB_DB!;
+if (!uri) throw new Error("Missing MONGODB_URI");
+if (!dbName) throw new Error("Missing MONGODB_DB");
+
+let clientPromise: Promise<MongoClient>;
+declare global {
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
+if (!global._mongoClientPromise) {
+  const client = new MongoClient(uri);
+  global._mongoClientPromise = client.connect();
+}
+clientPromise = global._mongoClientPromise;
+
+function json(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// POST — add new user (stores password as plain text)
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const { firstName, lastName, email, password } = await request.json();
+    if (!firstName || !lastName || !email || !password) {
+      return json({ error: "Missing required fields" }, 400);
+    }
+
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const users = db.collection("users");
+
+    await users.createIndex({ email: 1 }, { unique: true });
+
+    const doc = {      
+      first_name: String(firstName).trim(),
+      last_name: String(lastName).trim(),
+      email: String(email).trim().toLowerCase(),
+      password: String(password), // ⚠ plain text
+      created_at: new Date(),
+    };
+
+    const result = await users.insertOne(doc);
+    return json({ ok: true, id: result.insertedId }, 201);
+  } catch (e: any) {
+    if (e?.code === 11000) return json({ error: "Email already exists" }, 409);
+    return json({ error: e?.message ?? "Server error" }, 500);
+  }
 };
 
+// GET — Login: email + password check
 export const GET: APIRoute = async ({ request }) => {
   try {
     const url = new URL(request.url);
@@ -16,80 +64,50 @@ export const GET: APIRoute = async ({ request }) => {
     const password = url.searchParams.get("password");
 
     if (!email || !password) {
-      return new Response(JSON.stringify({ error: "email and password required" }), {
-        headers: { "content-type": "application/json" },
-        status: 400,
-      });
+      return json({ ok: false, error: "Missing email or password" }, 400);
     }
 
-    const db = await getDb();
-    // fetch only ONE document
-    const user = await db.collection("users").findOne({
-      email: String(email).toLowerCase().trim(),
-      password, // plaintext per your request
-    });
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const users = db.collection("users");
 
+    const user = await users.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return new Response(JSON.stringify({ ok: false, error: "Invalid credentials" }), {
-        headers: { "content-type": "application/json" },
-        status: 401,
-      });
+      return json({ ok: false, error: "Invalid email or password" }, 401);
     }
 
-    // return a trimmed user object (don’t leak password)
-    const { _id, email: userEmail, name, role } = user;
-    return new Response(JSON.stringify({ ok: true, user: { _id, email: userEmail, name, role } }), {
-      headers: { "content-type": "application/json" },
-      status: 200,
+    const isMatch = password === user.password; // ⚠️ Plaintext match (you can hash later)
+    if (!isMatch) {
+      return json({ ok: false, error: "Invalid email or password" }, 401);
+    }
+
+    return json({
+      ok: true,
+      user: {
+        id: user._id,
+        name: user.first_name,
+        email: user.email,
+      },
     });
   } catch (e: any) {
-    console.error("GET /api/users error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    return json({ ok: false, error: e?.message ?? "Server error" }, 500);
   }
 };
-
-/** Create user: POST /api/users { firstName, lastName, email } */
-export const POST: APIRoute = async ({ request }) => {
-    console.log("POST /api/users called");
-    
+// GET — List users (for admin or debugging)
+/*export const GET: APIRoute = async () => {
   try {
-    const body = (await request.json()) as Partial<NewUser>;
-    const firstName = body.firstName?.trim();
-    const lastName = body.lastName?.trim();
-    const email = body.email?.trim().toLowerCase();
-    const password = body.password?.trim();
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const users = db.collection("users");
 
-    if (!firstName || !lastName || !email || !password) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return new Response(JSON.stringify({ error: "Invalid email format" }), { status: 400 });
-    }
+    const data = await users
+      .find({}) // no projection → passwords included
+      .sort({ created_at: -1 })
+      .limit(10)
+      .toArray();
 
-    const db = await getDb();
-
-    // enforce unique email
-    const existing = await db.collection("users").findOne({ email });
-    if (existing) {
-      return new Response(JSON.stringify({ error: "Email already exists" }), { status: 409 });
-    }
-
-    const result = await db.collection("users").insertOne({
-      firstName,
-      lastName,
-      email,
-      password, // plaintext for demo; hash in production!
-      createdAt: new Date(),
-    });
-
-    console.log("✅ Inserted user:", result.insertedId.toString());
-
-    return new Response(JSON.stringify({ id: result.insertedId }), {
-      headers: { "content-type": "application/json" },
-      status: 201,
-    });
+    return json({ ok: true, users: data });
   } catch (e: any) {
-    console.error("POST /api/users error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    return json({ ok: false, error: e?.message ?? "Server error" }, 500);
   }
-};
+};*/

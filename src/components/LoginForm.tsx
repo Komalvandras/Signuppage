@@ -47,7 +47,7 @@ export default function LoginForm() {
     const res = await fetch(`/api/users?${params.toString()}`, { method: "GET" });
     const data = await res.json();
 
-    if (!res.ok || !data?.ok) {
+    if (!res.ok || !data?.ok || !data.user) {
       alert(data?.error || "Login failed");
       return;
     }
