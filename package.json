@@ -9,12 +9,13 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/vercel": "^8.2.5",
+    "@astrojs/vercel": "^8.0.4",
     "@supabase/supabase-js": "^2.54.0",
     "astro": "^5.12.9",
     "dotenv": "^17.2.1",
     "mongodb": "^6.18.0",
-    "solid-js": "^1.7.0"
+    "solid-js": "^1.7.0",
+    "vercel": "^45.0.9"
   },
   "devDependencies": {
     "@astrojs/node": "^9.4.0",

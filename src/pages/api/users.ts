@@ -93,21 +93,4 @@ export const GET: APIRoute = async ({ request }) => {
     return json({ ok: false, error: e?.message ?? "Server error" }, 500);
   }
 };
-// GET — List users (for admin or debugging)
-/*export const GET: APIRoute = async () => {
-  try {
-    const client = await clientPromise;
-    const db = client.db(dbName);
-    const users = db.collection("users");
 
-    const data = await users
-      .find({}) // no projection → passwords included
-      .sort({ created_at: -1 })
-      .limit(10)
-      .toArray();
-
-    return json({ ok: true, users: data });
-  } catch (e: any) {
-    return json({ ok: false, error: e?.message ?? "Server error" }, 500);
-  }
-};*/
