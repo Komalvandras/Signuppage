@@ -66,10 +66,12 @@ export const GET: APIRoute = async ({ request }) => {
     if (!email || !password) {
       return json({ ok: false, error: "Missing email or password" }, 400);
     }
+    console.log("Connecting to DB...");
 
     const client = await clientPromise;
     const db = client.db(dbName);
     const users = db.collection("users");
+    console.log("Looking for user:", email);
 
     const user = await users.findOne({ email: email.toLowerCase() });
     if (!user) {
